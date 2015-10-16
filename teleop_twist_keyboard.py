@@ -37,8 +37,8 @@ moveBindings = {
            }
 
 rotateBindings = {
-        'v':(0,1),
-        'b':(0,-1),
+        '[':(1),
+        ']':(-1),
            }
 
 speedBindings={
@@ -49,6 +49,16 @@ speedBindings={
         'e':(1,1.1),
         'c':(1,.9),
           }
+
+gaitBindings = {
+        '1':(1),
+        '2':(2),
+        '3':(3),
+        '4':(4),
+        '5':(5),
+        '6':(6),
+           }
+
 
 def getKey():
     tty.setraw(sys.stdin.fileno())
@@ -83,7 +93,9 @@ if __name__=="__main__":
                 x = moveBindings[key][0]
                 y = moveBindings[key][1]
             elif key in rotateBindings.keys():
-                th = rotateBindings[key][1]
+                th = rotateBindings[key]
+            elif key in gaitBindings.keys():
+                gait = gaitBindings[key]
             elif key in speedBindings.keys():
                 speed = speed * speedBindings[key][0]
                 turn = turn * speedBindings[key][1]
