@@ -3,12 +3,12 @@ import roslib; roslib.load_manifest('teleop_twist_keyboard')
 import rospy
 
 from geometry_msgs.msg import Twist
-
+from ros_arduino_msgs.msg import PhoenixState
 import sys, select, termios, tty
 
 msg = """
 Reading from the keyboard  and Publishing to Twist!
----------------------------
+---------------------0------
 Moving around:
    u    i    o
    j    k    l
@@ -37,8 +37,8 @@ moveBindings = {
            }
 
 rotateBindings = {
-        '[':(1),
-        ']':(-1),
+        't':(1),
+        'y':(-1),
            }
 
 speedBindings={
@@ -59,6 +59,12 @@ gaitBindings = {
         '6':(6),
            }
 
+stateBindings = {
+        'b':(1),
+        'n':(0),
+        'd':(2),
+        's':(3),
+           }
 
 def getKey():
     tty.setraw(sys.stdin.fileno())
@@ -77,13 +83,18 @@ if __name__=="__main__":
     settings = termios.tcgetattr(sys.stdin)
 
     pub = rospy.Publisher('cmd_vel', Twist)
+    pubstate = rospy.Publisher('cmd_phstate', PhoenixState)
     rospy.init_node('teleop_twist_keyboard')
 
     x = 0
     y =0
     th = 0
+    state = [0,0,0]
     status = 0
+   
+    gaitkey = 1
 
+    
     try:
         print msg
         print vels(speed,turn)
@@ -94,8 +105,17 @@ if __name__=="__main__":
                 y = moveBindings[key][1]
             elif key in rotateBindings.keys():
                 th = rotateBindings[key]
-            elif key in gaitBindings.keys():
-                gait = gaitBindings[key]
+	    elif key in gaitBindings.keys():
+                gaitkey = gaitBindings[key]
+            elif key in stateBindings.keys():
+                if stateBindings[key] == 0:
+		   state = [0,0,0]
+		elif stateBindings[key] == 1:
+		   state[0] = 1
+		elif stateBindings[key] == 2:
+		   state[1] = 1
+		elif stateBindings[key] == 3:
+		   state[2] = 1
             elif key in speedBindings.keys():
                 speed = speed * speedBindings[key][0]
                 turn = turn * speedBindings[key][1]
@@ -115,16 +135,33 @@ if __name__=="__main__":
             twist.linear.x = x*speed; twist.linear.y = y*speed; twist.linear.z = 0
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = th*turn
             pub.publish(twist)
+            phstate = PhoenixState()
+	    phstate.gait = gaitkey
+	    phstate.balance = state[0]
+	    phstate.doubleT = state[1]
+	    phstate.stand = state[2]
+	    pubstate.publish(phstate)
+																					
 
     except:
         print "Keyboard Error"
+	e = sys.exc_info()[0]
+	f = sys.exc_info()[1]
+   	print  e 
+	print f
 
     finally:
         twist = Twist()
         twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
         twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0
         pub.publish(twist)
-
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+	phstate = PhoenixState()
+	phstate.gait = gaitkey
+	phstate.balance = state[0]
+	phstate.doubleT = state[1]
+	phstate.stand = state[2]
+	pubstate.publish(phstate)
+        
+	termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
 
 
