@@ -2,7 +2,7 @@
 import roslib; roslib.load_manifest('teleop_twist_keyboard')
 import rospy
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, Transform
 from ros_arduino_msgs.msg import PhoenixState
 import sys, select, termios, tty
 
@@ -36,9 +36,23 @@ moveBindings = {
         'm':(-1,-1),
            }
 
+translateBindings = {
+        'I':(1,0,0),
+        'O':(1,-1,0),
+        'J':(0,1,0),
+        'L':(0,-1,0),
+        'U':(1,1,0),
+        '"':(-1,0,0),
+        '>':(-1,1,0),
+        '>':(-1,-1,0),
+	'(':(0,0,-1),
+        ')':(0,0,1),
+           }
+
+
 rotateBindings = {
-        't':(1),
-        'y':(-1),
+        '[':(1),
+        ']':(-1),
            }
 
 speedBindings={
@@ -63,7 +77,8 @@ stateBindings = {
         'b':(1),
         'n':(0),
         'd':(2),
-        's':(3),
+        '9':(3),
+	'0':(4),
            }
 
 def getKey():
@@ -83,12 +98,20 @@ if __name__=="__main__":
     settings = termios.tcgetattr(sys.stdin)
 
     pub = rospy.Publisher('cmd_vel', Twist)
+    pubtranslate = rospy.Publisher('cmd_trans', Transform)
     pubstate = rospy.Publisher('cmd_phstate', PhoenixState)
     rospy.init_node('teleop_twist_keyboard')
 
     x = 0
     y =0
     th = 0
+    tx = 0
+    ty =0
+    tz = 0
+    rx = 0
+    ry =0
+    rz = 0
+    rw = 0
     state = [0,0,0]
     status = 0
    
@@ -103,18 +126,24 @@ if __name__=="__main__":
             if key in moveBindings.keys():
                 x = moveBindings[key][0]
                 y = moveBindings[key][1]
+	    elif key in translateBindings.keys():
+                tx = translateBindings[key][0]
+                ty = translateBindings[key][1]
+		tz = translateBindings[key][2]
             elif key in rotateBindings.keys():
                 th = rotateBindings[key]
 	    elif key in gaitBindings.keys():
                 gaitkey = gaitBindings[key]
             elif key in stateBindings.keys():
                 if stateBindings[key] == 0:
-		   state = [0,0,0]
+		   state = [0,0,1]
 		elif stateBindings[key] == 1:
 		   state[0] = 1
 		elif stateBindings[key] == 2:
 		   state[1] = 1
 		elif stateBindings[key] == 3:
+		   state[2] = 0
+		elif stateBindings[key] == 4:
 		   state[2] = 1
             elif key in speedBindings.keys():
                 speed = speed * speedBindings[key][0]
@@ -135,7 +164,11 @@ if __name__=="__main__":
             twist.linear.x = x*speed; twist.linear.y = y*speed; twist.linear.z = 0
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = th*turn
             pub.publish(twist)
-            phstate = PhoenixState()
+ 	    transform = Transform()
+            transform.translation.x = tx*speed; transform.translation.y = ty*speed; transform.translation.z = tz*speed
+            transform.rotation.x = rx*speed; transform.rotation.y = ry*speed; transform.rotation.z = rz*speed; transform.rotation.w = rw*speed
+            pubtranslate.publish(transform)
+	    phstate = PhoenixState()
 	    phstate.gait = gaitkey
 	    phstate.balance = state[0]
 	    phstate.doubleT = state[1]
